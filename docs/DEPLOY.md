@@ -1,88 +1,121 @@
-# Деплой petriyov.io на VPS
+# Деплой petriyov.io на VPS (Docker, с нуля)
 
-Схема: GitHub Actions собирает сайт и выкладывает `dist/` на VPS по SSH. Caddy раздаёт статику и сам получает HTTPS-сертификаты.
+Схема: push в `main` → GitHub Actions собирает Docker-образ (статика + Caddy) → публикует в GHCR (`ghcr.io/<владелец>/petriyov.io`) → по SSH выполняет на VPS `docker compose pull && up -d`. HTTPS-сертификаты Caddy выпускает и продлевает сам.
+
+Предполагается свежий VPS с Ubuntu 22.04/24.04 и доступом root (или sudo-пользователем).
 
 ## 1. DNS
 
-У DNS-провайдера домена `petriyov.io` создайте записи:
+У DNS-провайдера домена `petriyov.io`:
 
 | Тип | Имя | Значение |
-| ---- | ----- | ------------------- |
+| ---- | ----- | ------------------------- |
 | A | `@` | IPv4-адрес VPS |
 | AAAA | `@` | IPv6-адрес VPS (если есть) |
 | A | `www` | тот же IPv4 |
 | AAAA | `www` | тот же IPv6 |
-| CAA | `@` | `0 issue "letsencrypt.org"` (опционально, но рекомендуется) |
+| CAA | `@` | `0 issue "letsencrypt.org"` (опционально) |
 
-Проверка: `dig +short petriyov.io` должен вернуть IP вашего VPS. Дождитесь распространения DNS **до** первого запуска Caddy, иначе выпуск сертификата упрётся в лимиты Let's Encrypt.
+Проверьте `dig +short petriyov.io` **до** первого запуска контейнера — иначе Caddy будет бесполезно дёргать Let's Encrypt и может упереться в rate-limit.
 
-## 2. Установка Caddy (Ubuntu 22.04/24.04)
+## 2. Установка Docker на VPS
 
 ```bash
-sudo apt update
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install -y caddy
+curl -fsSL https://get.docker.com | sh
+docker --version && docker compose version   # проверка
 ```
 
-Скопируйте `Caddyfile` из корня репозитория в `/etc/caddy/Caddyfile` и перезапустите:
+Файрвол (если ufw): `sudo ufw allow 22,80,443/tcp && sudo ufw allow 443/udp` (443/udp — HTTP/3).
+
+## 3. Deploy-пользователь
 
 ```bash
-sudo cp Caddyfile /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-```
-
-Откройте порты 80 и 443 (`sudo ufw allow 80,443/tcp`, если используете ufw).
-
-## 3. Deploy-пользователь и структура каталогов
-
-```bash
-# пользователь без пароля, только для деплоя
 sudo adduser --disabled-password --gecos "" deploy
+sudo usermod -aG docker deploy      # право управлять контейнерами
 
-# структура: releases + симлинк, который читает Caddy
-sudo mkdir -p /var/www/releases
-sudo chown -R deploy:deploy /var/www
-
-# первый (пустой) релиз, чтобы Caddy было что раздавать
-sudo -u deploy mkdir /var/www/releases/initial
-sudo -u deploy ln -sfn /var/www/releases/initial /var/www/petriyov.io
-```
-
-SSH-ключ для GitHub Actions:
-
-```bash
+# SSH-ключ для GitHub Actions (выполняйте на своей машине):
 ssh-keygen -t ed25519 -C "deploy@petriyov.io" -f deploy_key -N ""
-# публичный ключ — на сервер:
+
+# публичную часть — на сервер:
 sudo -u deploy mkdir -p /home/deploy/.ssh
 cat deploy_key.pub | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys
-sudo -u deploy chmod 700 /home/deploy/.ssh && sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
+sudo chmod 700 /home/deploy/.ssh && sudo chmod 600 /home/deploy/.ssh/authorized_keys
 ```
 
-## 4. Secrets в GitHub
+> Членство в группе `docker` эквивалентно root на этой машине — ключ `deploy` храните только в GitHub Secrets.
 
-В репозитории: Settings → Secrets and variables → Actions → New repository secret.
+## 4. Каталог проекта на VPS
+
+```bash
+sudo mkdir -p /opt/petriyov.io && sudo chown deploy:deploy /opt/petriyov.io
+```
+
+От пользователя `deploy` положите туда два файла:
+
+**`/opt/petriyov.io/docker-compose.yml`** — скопируйте из корня репозитория (он написан именно для VPS).
+
+**`/opt/petriyov.io/.env`**:
+
+```env
+IMAGE=ghcr.io/<github-владелец>/petriyov.io
+IMAGE_TAG=latest
+```
+
+`<github-владелец>` — в нижнем регистре (например, `eugenepetriyov`).
+
+### Доступ к GHCR
+
+- **Образ публичный** (рекомендуется для простоты): после первого workflow-запуска откройте пакет на GitHub → Package settings → Change visibility → Public. На VPS ничего настраивать не нужно.
+- **Образ приватный**: создайте PAT (classic) с правом `read:packages` и на VPS выполните `docker login ghcr.io -u <логин> -p <PAT>` от пользователя `deploy` (логин сохранится в `~/.docker/config.json`).
+
+## 5. Secrets в GitHub
+
+Settings → Secrets and variables → Actions:
 
 | Secret | Значение |
-| ---------- | ------------------------------------ |
+| ---------- | ------------------------------------- |
 | `SSH_HOST` | IP или hostname VPS |
 | `SSH_USER` | `deploy` |
 | `SSH_KEY` | содержимое **приватного** `deploy_key` |
 
-## 5. Первый деплой
+`GITHUB_TOKEN` для публикации в GHCR встроенный — отдельный секрет не нужен.
 
-Push в `main` — workflow `.github/workflows/deploy.yml` соберёт сайт и выложит его. Проверьте: https://petriyov.io и https://www.petriyov.io (должен редиректить на apex).
+## 6. Первый деплой
 
-Деплой атомарный: новый релиз загружается в `/var/www/releases/<timestamp>`, затем симлинк `/var/www/petriyov.io` переключается одной операцией. Старые релизы хранятся (последние 5).
+Push в `main` (или Actions → «Build & Deploy (Docker)» → Run workflow). Workflow: соберёт образ → запушит `latest` и `sha-<коммит>` → на VPS сделает `docker compose pull && up -d` → проверит `https://petriyov.io/`.
 
-## 6. Откат
+Первый выпуск сертификата занимает ~10–30 секунд после старта контейнера.
+
+Проверка на сервере:
+
+```bash
+docker ps                             # petriyov-site: Up (healthy)
+docker logs -f petriyov-site          # логи Caddy, в т.ч. выпуск сертификата
+curl -I https://petriyov.io/
+```
+
+## 7. Откат
+
+Каждый деплой публикует тег `sha-<12 символов коммита>` — откат это запуск предыдущего тега:
 
 ```bash
 ssh deploy@VPS
-ls -dt /var/www/releases/*            # список релизов, новые сверху
-ln -sfn /var/www/releases/<нужный> /var/www/petriyov.io
+cd /opt/petriyov.io
+# посмотреть, какие теги есть: GitHub → Packages → petriyov.io → теги
+sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=sha-abcdef123456/' .env
+docker compose pull && docker compose up -d
 ```
 
-Перезапуск Caddy не требуется — симлинк подхватывается сразу.
+Вернуться на актуальный: `IMAGE_TAG=latest` и снова `pull && up -d`.
+
+## 8. Эксплуатация
+
+```bash
+docker logs --tail 100 petriyov-site        # логи
+docker compose -f /opt/petriyov.io/docker-compose.yml restart   # перезапуск
+docker system prune -f                       # почистить старые образы
+```
+
+- Volume `caddy_data` хранит сертификаты — **не удаляйте** его (`docker compose down -v` — нельзя), иначе повторный выпуск и риск rate-limit Let's Encrypt.
+- Обновление Caddy/Node приезжает само со следующей пересборкой образа (базовые образы `caddy:2-alpine`, `node:22-alpine`).
+- Бэкапить на сервере нечего: весь контент — в git-репозитории.

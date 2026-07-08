@@ -1,0 +1,15 @@
+# Локальная проверка production-сборки в Docker:
+#   docker compose -f docker-compose.local.yml up --build
+#   → http://localhost:8080
+# Чеклист проверки: docs/DOCKER.md
+services:
+  site:
+    build: .
+    container_name: petriyov-site-local
+    ports:
+      - '8080:80'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost/']
+      interval: 10s
+      timeout: 3s
+      retries: 3

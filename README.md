@@ -1,6 +1,13 @@
 # petriyov.io
 
-Персональный сайт-визитка с блогом. [Astro 5](https://astro.build) + Tailwind CSS 4 + [Keystatic](https://keystatic.com) (локальная админка). Сборка — чистая статика, деплой на VPS через Caddy.
+Персональный сайт-визитка с блогом. [Astro 5](https://astro.build) + Tailwind CSS 4 + [Keystatic](https://keystatic.com) (локальная админка). Сборка — чистая статика в Docker-образе с Caddy, деплой на VPS через GitHub Actions + GHCR.
+
+**Документация:**
+
+- [docs/CONTENT.md](docs/CONTENT.md) — работа с CMS и наполнение контента (статьи, Now, резюме)
+- [docs/DOCKER.md](docs/DOCKER.md) — локальная проверка production-сборки в Docker (чеклист)
+- [docs/DEPLOY.md](docs/DEPLOY.md) — настройка VPS и деплой с нуля
+- [AGENTS.md](AGENTS.md) — инструкция для coding agents (архитектура, ограничения, гочи)
 
 ## Команды
 
@@ -11,6 +18,7 @@
 | `npm run build` | production-сборка в `dist/` |
 | `npm run preview` | локальный просмотр собранного сайта |
 | `npm run new:post -- "Заголовок"` | заготовка новой статьи |
+| `npm run docker:local` | production-сборка в Docker → http://localhost:8080 |
 
 Админка: `npm run dev` → **http://localhost:4321/keystatic**. Работает только в dev; правки сохраняются прямо в файлы `src/content/*`, дальше — обычный git-коммит. В production-сборку админка не попадает.
 
@@ -80,8 +88,8 @@ lang: ru                          # ru | en
 - `src/config/site.ts` — имя/контакты/меню;
 - `src/components/`, `src/layouts/` — UI;
 - `src/pages/` — роуты, включая RSS (`/rss.xml`) и OG-изображения (`/og/*.png`);
-- `Caddyfile`, `.github/workflows/deploy.yml`, [docs/DEPLOY.md](docs/DEPLOY.md) — деплой.
+- `Dockerfile`, `docker/Caddyfile.*`, `docker-compose*.yml`, `.github/workflows/deploy.yml` — сборка и деплой.
 
 ## Деплой
 
-Push в `main` → GitHub Actions собирает и атомарно выкладывает на VPS. Первичная настройка сервера, DNS и secrets — в [docs/DEPLOY.md](docs/DEPLOY.md).
+Push в `main` → GitHub Actions собирает Docker-образ (статика + Caddy), публикует в GHCR и перезапускает контейнер на VPS. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).

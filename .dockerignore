@@ -1,0 +1,15 @@
+node_modules
+dist
+.astro
+.git
+.github
+.claude
+.keystatic
+docs
+README.md
+AGENTS.md
+CLAUDE.md
+.env
+.env.*
+.DS_Store
+npm-debug.log*

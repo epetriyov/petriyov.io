@@ -1,4 +1,4 @@
-name: Deploy to VPS
+name: Build & Deploy (Docker)
 
 on:
   push:
@@ -9,23 +9,47 @@ concurrency:
   group: deploy
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
-  build-and-deploy:
+  build-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Compute image name (lowercase)
+        id: meta
+        run: |
+          echo "image=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          node-version: 22
-          cache: npm
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
 
-      - name: Build
-        run: npm run build
-
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -33,12 +57,17 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy (atomic)
-        env:
-          SSH: ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+      - name: Pull new image and restart
         run: |
-          RELEASE="/var/www/releases/$(date +%Y%m%d%H%M%S)"
-          $SSH "mkdir -p $RELEASE"
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" dist/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:$RELEASE/"
-          # атомарное переключение симлинка + очистка старых релизов (оставляем 5)
-          $SSH "ln -sfn $RELEASE /var/www/petriyov.io && ls -dt /var/www/releases/* | tail -n +6 | xargs -r rm -rf"
+          ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
+            set -euo pipefail
+            cd /opt/petriyov.io
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
+          EOF
+
+      - name: Smoke check
+        run: |
+          sleep 5
+          curl -sSf -o /dev/null https://petriyov.io/ && echo "site is up"

@@ -1,0 +1,26 @@
+# Production compose — лежит на VPS в /opt/petriyov.io/ (см. docs/DEPLOY.md).
+# Образ собирает GitHub Actions и публикует в GHCR; тег задаётся через .env:
+#   IMAGE=ghcr.io/<github-владелец>/petriyov.io
+#   IMAGE_TAG=latest            # или sha-<коммит> для отката
+services:
+  site:
+    image: ${IMAGE:?задайте IMAGE в .env}:${IMAGE_TAG:-latest}
+    container_name: petriyov-site
+    restart: unless-stopped
+    command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile.prod', '--adapter', 'caddyfile']
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      - caddy_data:/data # сертификаты Let's Encrypt — не удалять!
+      - caddy_config:/config
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost/']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  caddy_data:
+  caddy_config:
