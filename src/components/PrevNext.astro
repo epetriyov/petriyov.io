@@ -1,0 +1,37 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  prev?: CollectionEntry<'blog'> | undefined;
+  next?: CollectionEntry<'blog'> | undefined;
+}
+
+const { prev, next } = Astro.props;
+---
+
+{
+  (prev || next) && (
+    <nav class="mt-11 grid grid-cols-2 gap-3 border-t border-line pt-6 max-[480px]:grid-cols-1" aria-label="Соседние статьи">
+      <div>
+        {prev && (
+          <a href={`/blog/${prev.id}/`} class="group block no-underline">
+            <div class="text-[12.5px] text-faint">← Предыдущая</div>
+            <div class="mt-1 text-[14.5px] font-[550] leading-[1.4] text-ink transition-colors group-hover:text-accent">
+              {prev.data.title}
+            </div>
+          </a>
+        )}
+      </div>
+      <div class="text-right max-[480px]:text-left">
+        {next && (
+          <a href={`/blog/${next.id}/`} class="group block no-underline">
+            <div class="text-[12.5px] text-faint">Следующая →</div>
+            <div class="mt-1 text-[14.5px] font-[550] leading-[1.4] text-ink transition-colors group-hover:text-accent">
+              {next.data.title}
+            </div>
+          </a>
+        )}
+      </div>
+    </nav>
+  )
+}

@@ -1,0 +1,29 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+
+const headings = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{
+  headings.length >= 3 && (
+    <nav class="mb-9 rounded-card bg-surface px-[22px] py-5 shadow-card" aria-label="Оглавление">
+      <div class="section-label mb-2.5">Содержание</div>
+      <ol class="space-y-1.5 text-[14.5px]">
+        {headings.map((h) => (
+          <li class:list={[h.depth === 3 && 'pl-4']}>
+            <a
+              href={`#${h.slug}`}
+              class="text-muted no-underline transition-colors hover:text-accent"
+            >
+              {h.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}

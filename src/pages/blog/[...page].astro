@@ -1,0 +1,53 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import PostCard from '../../components/PostCard.astro';
+import Pagination from '../../components/Pagination.astro';
+import { SITE } from '../../config/site';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = (await getCollection('blog', ({ data }) => import.meta.env.DEV || !data.draft)).sort(
+    (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+  );
+  return paginate(posts, { pageSize: SITE.postsPerPage });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+
+const allPosts = await getCollection('blog', ({ data }) => import.meta.env.DEV || !data.draft);
+const tags = [...new Set(allPosts.flatMap((p) => p.data.tags))].sort();
+
+const pageSuffix = page.currentPage > 1 ? ` — страница ${page.currentPage}` : '';
+---
+
+<Base
+  title={`Блог — Евгений Петриёв (Petriyov)${pageSuffix}`}
+  description="Статьи Евгения Петриёва о менеджменте в инженерии, IoT, архитектуре и найме."
+>
+  <h1 class="mb-3 text-[27px] font-[650] tracking-[-0.015em]">Блог</h1>
+  <p class="mb-6 text-[15px] leading-[1.7] text-muted">
+    Пишу о менеджменте в инженерии, IoT-платформах, архитектуре и найме.
+  </p>
+
+  {
+    tags.length > 0 && (
+      <ul class="mb-8 flex flex-wrap gap-1.5">
+        {tags.map((tag) => (
+          <li>
+            <a
+              href={`/blog/tags/${tag}/`}
+              class="block rounded-full border border-line bg-surface px-3 py-1 text-[13px] text-muted no-underline transition-colors hover:border-accent hover:text-accent"
+            >
+              #{tag}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  {page.data.map((post) => <PostCard post={post} />)}
+
+  <Pagination page={page} />
+</Base>

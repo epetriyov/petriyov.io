@@ -1,0 +1,20 @@
+---
+import { getEntry, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { formatDate, isoDate } from '../lib/format';
+
+const page = await getEntry('pages', 'now');
+if (!page) throw new Error('Не найден src/content/pages/now.md');
+if (!page.data.updatedDate) throw new Error('В now.md обязательно поле updatedDate');
+const { Content } = await render(page);
+---
+
+<Base title="Now — чем занят Евгений Петриёв прямо сейчас" description={page.data.summary ?? 'Чем я занят прямо сейчас.'}>
+  <h1 class="text-[27px] font-[650] tracking-[-0.015em]">{page.data.title}</h1>
+  <p class="mt-2.5 text-[15px] text-faint">
+    Обновлено: <time datetime={isoDate(page.data.updatedDate)} class="tabular-nums">{formatDate(page.data.updatedDate)}</time>
+  </p>
+  <article class="prose mt-7">
+    <Content />
+  </article>
+</Base>

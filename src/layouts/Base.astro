@@ -1,0 +1,71 @@
+---
+import '../styles/global.css';
+import { getImage } from 'astro:assets';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { SITE, canonicalUrl } from '../config/site';
+import avatarSrc from '../assets/avatar.jpg';
+
+interface Props {
+  title: string;
+  description: string;
+  lang?: 'ru' | 'en';
+  /** Абсолютный URL или путь от корня сайта */
+  ogImage?: string;
+  ogType?: 'website' | 'article';
+  /** hreflang-альтернативы страницы */
+  alternates?: { hreflang: string; href: string }[];
+}
+
+const { title, description, lang = 'ru', ogImage, ogType = 'website', alternates = [] } = Astro.props;
+
+const canonical = canonicalUrl(Astro.url.pathname);
+// Фолбэк для OG — то же фото, что на главной
+const avatarOg = await getImage({ src: avatarSrc, width: 512, height: 512, format: 'jpeg' });
+const ogImageUrl = new URL(ogImage ?? avatarOg.src, SITE.url).href;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#F1F3EE" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {alternates.map((alt) => <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />)}
+
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content={lang === 'ru' ? 'ru_RU' : 'en_US'} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="alternate" type="application/rss+xml" title={`${SITE.name} — RSS`} href={new URL('/rss.xml', SITE.url).href} />
+    <slot name="head" />
+  </head>
+  <body>
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:text-accent"
+      >К содержимому</a
+    >
+    <div class="mx-auto max-w-[680px] px-6 pb-14 pt-[52px] max-[420px]:px-5">
+      <Nav />
+      <main id="main">
+        <slot />
+      </main>
+      <Footer />
+    </div>
+  </body>
+</html>

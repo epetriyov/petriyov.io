@@ -1,0 +1,26 @@
+---
+import { SITE } from '../config/site';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href.replace(/\/$/, '')));
+---
+
+<nav class="mb-[52px] flex flex-wrap items-baseline gap-x-[22px] gap-y-2 text-[14.5px]" aria-label="Основная навигация">
+  <a href="/" class="mr-auto text-[15.5px] font-[650] text-ink no-underline transition-colors hover:text-accent">
+    {SITE.lastName}
+  </a>
+  {
+    SITE.nav.map((item) => (
+      <a
+        href={item.href}
+        aria-current={isCurrent(item.href) ? 'page' : undefined}
+        class:list={[
+          'no-underline transition-colors hover:text-accent',
+          isCurrent(item.href) ? 'font-[550] text-accent' : 'text-[#5A6353]',
+        ]}
+      >
+        {item.label}
+      </a>
+    ))
+  }
+</nav>

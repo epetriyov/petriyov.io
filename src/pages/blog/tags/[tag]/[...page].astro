@@ -1,0 +1,38 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { getCollection } from 'astro:content';
+import Base from '../../../../layouts/Base.astro';
+import PostCard from '../../../../components/PostCard.astro';
+import Pagination from '../../../../components/Pagination.astro';
+import { SITE } from '../../../../config/site';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = (await getCollection('blog', ({ data }) => import.meta.env.DEV || !data.draft)).sort(
+    (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+  );
+  const tags = [...new Set(posts.flatMap((p) => p.data.tags))];
+  return tags.flatMap((tag) =>
+    paginate(
+      posts.filter((p) => p.data.tags.includes(tag)),
+      { params: { tag }, pageSize: SITE.postsPerPage }
+    )
+  );
+}) satisfies GetStaticPaths;
+
+const { tag } = Astro.params;
+const { page } = Astro.props;
+const pageSuffix = page.currentPage > 1 ? ` — страница ${page.currentPage}` : '';
+---
+
+<Base title={`Статьи по тегу «${tag}» — Петриёв${pageSuffix}`} description={`Статьи Евгения Петриёва по тегу «${tag}».`}>
+  <p class="section-label mb-1.5">Тег</p>
+  <h1 class="mb-7 text-[27px] font-[650] tracking-[-0.015em]">#{tag}</h1>
+
+  {page.data.map((post) => <PostCard post={post} />)}
+
+  <Pagination page={page} />
+
+  <a href="/blog/" class="mt-6 inline-block text-[14.5px] font-[550] text-accent no-underline hover:underline [text-underline-offset:3px]">
+    ← Все статьи
+  </a>
+</Base>

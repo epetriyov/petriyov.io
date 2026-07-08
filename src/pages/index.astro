@@ -1,0 +1,54 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import PostCard from '../components/PostCard.astro';
+import NowTeaser from '../components/NowTeaser.astro';
+import JsonLdPerson from '../components/JsonLdPerson.astro';
+import avatar from '../assets/avatar.jpg';
+
+const posts = (await getCollection('blog', ({ data }) => import.meta.env.DEV || !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 3);
+
+const now = await getEntry('pages', 'now');
+---
+
+<Base
+  title="Евгений Петриёв (Petriyov) — Engineering Manager"
+  description="Евгений Петриёв (Eugene Petriyov) — engineering manager и head of development. Блог об IoT, менеджменте в инженерии, архитектуре и найме."
+>
+  <JsonLdPerson slot="head" />
+
+  <section class="flex items-start gap-[22px] max-[540px]:flex-col">
+    <Image
+      src={avatar}
+      alt="Евгений Петриёв — engineering manager"
+      width={96}
+      height={96}
+      densities={[1, 2]}
+      loading="eager"
+      class="flex-none rounded-3xl border border-line"
+    />
+    <div>
+      <h1 class="text-[27px] font-[650] tracking-[-0.015em]">Евгений Петриёв (Eugene Petriyov)</h1>
+      <p class="mt-3 text-base leading-[1.7] text-ink-soft">
+        Engineering manager и head of development, руководитель отдела разработки. Строю IoT-платформы и команды,
+        которые их делают. Пишу о менеджменте в инженерии, архитектуре и найме — подробнее <a
+          href="/about/"
+          class="text-accent underline decoration-[#B9C6B4] [text-underline-offset:3px] transition-colors hover:decoration-accent"
+          >обо мне</a
+        >.
+      </p>
+    </div>
+  </section>
+
+  {now?.data.summary && now.data.updatedDate && <NowTeaser summary={now.data.summary} updatedDate={now.data.updatedDate} />}
+
+  <h2 class="section-label mb-3.5 mt-11">Последние статьи</h2>
+  {posts.map((post) => <PostCard post={post} />)}
+
+  <a href="/blog/" class="mt-1.5 inline-block text-[14.5px] font-[550] text-accent no-underline hover:underline [text-underline-offset:3px]">
+    Все статьи →
+  </a>
+</Base>

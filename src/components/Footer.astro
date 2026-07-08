@@ -1,0 +1,13 @@
+---
+import { SITE } from '../config/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-[52px] flex flex-wrap gap-x-[18px] gap-y-1 border-t border-line pt-5 text-[13.5px] text-label">
+  <span>© {year} {SITE.lastName}</span>
+  <a class="text-[#5A6353] no-underline transition-colors hover:text-accent" href={SITE.social.github} rel="me">GitHub</a>
+  <a class="text-[#5A6353] no-underline transition-colors hover:text-accent" href={SITE.social.linkedin} rel="me">LinkedIn</a>
+  <a class="text-[#5A6353] no-underline transition-colors hover:text-accent" href={SITE.social.telegram} rel="me">Telegram</a>
+  <a class="text-[#5A6353] no-underline transition-colors hover:text-accent" href="/rss.xml">RSS</a>
+</footer>

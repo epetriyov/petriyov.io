@@ -1,0 +1,26 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatDate, isoDate } from '../lib/format';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const url = `/blog/${post.id}/`;
+---
+
+<a
+  href={url}
+  class="group mb-3 block rounded-card bg-surface px-[22px] py-5 no-underline shadow-card transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-card-hover motion-reduce:hover:translate-y-0"
+>
+  <div class="flex items-baseline justify-between gap-5 max-[480px]:flex-col max-[480px]:gap-1">
+    <span class="text-[16.5px] font-semibold leading-[1.35] tracking-[-0.005em] text-ink transition-colors group-hover:text-accent">
+      {post.data.title}
+    </span>
+    <time datetime={isoDate(post.data.pubDate)} class="whitespace-nowrap text-[13px] tabular-nums text-faint">
+      {formatDate(post.data.pubDate, post.data.lang)}
+    </time>
+  </div>
+  <p class="mt-1.5 text-sm leading-[1.6] text-muted">{post.data.description}</p>
+</a>

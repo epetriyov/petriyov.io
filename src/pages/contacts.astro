@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../config/site';
+
+const contacts = [
+  { label: 'Email', value: SITE.email, href: `mailto:${SITE.email}` },
+  { label: 'GitHub', value: SITE.social.github.replace('https://', ''), href: SITE.social.github },
+  { label: 'LinkedIn', value: SITE.social.linkedin.replace('https://www.', ''), href: SITE.social.linkedin },
+  { label: 'Telegram', value: SITE.social.telegram.replace('https://', ''), href: SITE.social.telegram },
+];
+---
+
+<Base title="Контакты — Евгений Петриёв (Petriyov)" description="Как связаться с Евгением Петриёвым: email, GitHub, LinkedIn, Telegram.">
+  <h1 class="mb-4 text-[27px] font-[650] tracking-[-0.015em]">Контакты</h1>
+  <p class="mb-8 text-ink-soft">
+    Лучший способ связаться — почта или Telegram. Отвечаю в течение пары дней.
+  </p>
+
+  <ul class="space-y-3">
+    {
+      contacts.map((c) => (
+        <li class="flex items-baseline gap-4 rounded-card bg-surface px-[22px] py-4 shadow-card max-[420px]:flex-col max-[420px]:gap-0.5">
+          <span class="section-label w-24 flex-none">{c.label}</span>
+          <a href={c.href} class="break-all text-[15px] text-accent no-underline hover:underline [text-underline-offset:3px]">
+            {c.value}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

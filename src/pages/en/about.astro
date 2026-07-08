@@ -1,0 +1,29 @@
+---
+import { getEntry, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import JsonLdPerson from '../../components/JsonLdPerson.astro';
+import { SITE } from '../../config/site';
+
+const page = await getEntry('pages', 'en/about');
+if (!page) throw new Error('Не найден src/content/pages/en/about.md');
+const { Content } = await render(page);
+
+const alternates = [
+  { hreflang: 'ru', href: `${SITE.url}/about/` },
+  { hreflang: 'en', href: `${SITE.url}/en/about/` },
+  { hreflang: 'x-default', href: `${SITE.url}/about/` },
+];
+---
+
+<Base
+  title="About — Eugene Petriyov, Engineering Manager"
+  description={page.data.description ?? 'Eugene Petriyov — engineering manager and head of development.'}
+  lang="en"
+  alternates={alternates}
+>
+  <JsonLdPerson slot="head" />
+  <h1 class="mb-7 text-[27px] font-[650] tracking-[-0.015em]">{page.data.title}</h1>
+  <article class="prose">
+    <Content />
+  </article>
+</Base>

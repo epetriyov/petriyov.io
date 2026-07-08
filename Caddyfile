@@ -1,0 +1,37 @@
+# Caddy-конфиг для petriyov.io (HTTPS выпускается автоматически)
+
+# www → apex
+www.petriyov.io {
+	redir https://petriyov.io{uri} permanent
+}
+
+petriyov.io {
+	# /var/www/petriyov.io — симлинк на текущий релиз (см. docs/DEPLOY.md)
+	root * /var/www/petriyov.io
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# CSP под чистую статику: скрипты только свои (JSON-LD — inline, поэтому 'unsafe-inline' не нужен script-у,
+		# но type=application/ld+json не исполняется и под script-src не подпадает)
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+		-Server
+	}
+
+	# долгий кэш для хэшированных ассетов Astro
+	@immutable path /_astro/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# кастомная 404
+	handle_errors {
+		@404 expression {http.error.status_code} == 404
+		rewrite @404 /404.html
+		file_server
+	}
+
+	file_server
+}

@@ -1,0 +1,33 @@
+---
+import type { Page } from 'astro';
+
+interface Props {
+  page: Page<unknown>;
+}
+
+const { page } = Astro.props;
+---
+
+{
+  page.lastPage > 1 && (
+    <nav class="mt-8 flex items-baseline justify-between text-[14.5px]" aria-label="Пагинация">
+      {page.url.prev ? (
+        <a href={page.url.prev} class="font-[550] text-accent no-underline hover:underline [text-underline-offset:3px]">
+          ← Новее
+        </a>
+      ) : (
+        <span />
+      )}
+      <span class="text-[13px] tabular-nums text-faint">
+        {page.currentPage} из {page.lastPage}
+      </span>
+      {page.url.next ? (
+        <a href={page.url.next} class="font-[550] text-accent no-underline hover:underline [text-underline-offset:3px]">
+          Старее →
+        </a>
+      ) : (
+        <span />
+      )}
+    </nav>
+  )
+}

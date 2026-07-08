@@ -1,0 +1,34 @@
+{
+  "name": "petriyov.io",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "new:post": "node scripts/new-post.mjs"
+  },
+  "dependencies": {
+    "@astrojs/markdoc": "^0.13.4",
+    "@astrojs/react": "^4.4.2",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.3",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@keystatic/astro": "^5.1.0",
+    "@keystatic/core": "^0.5.50",
+    "@tailwindcss/vite": "^4.3.2",
+    "astro": "^5.18.2",
+    "astro-og-canvas": "^0.13.0",
+    "mdast-util-to-string": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.3.2",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "typescript": "^5.9.3"
+  }
+}

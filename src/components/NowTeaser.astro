@@ -1,0 +1,16 @@
+---
+import { formatDate, isoDate } from '../lib/format';
+
+interface Props {
+  summary: string;
+  updatedDate: Date;
+}
+
+const { summary, updatedDate } = Astro.props;
+---
+
+<a href="/now/" class="group mt-[22px] flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[14.5px] no-underline">
+  <span class="section-label flex-none text-[11.5px] font-semibold">Сейчас</span>
+  <span class="text-ink-soft transition-colors group-hover:text-accent">{summary}</span>
+  <time datetime={isoDate(updatedDate)} class="text-[13px] text-faint">· обновлено {formatDate(updatedDate)}</time>
+</a>
