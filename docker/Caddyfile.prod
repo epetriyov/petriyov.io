@@ -1,11 +1,8 @@
-# Production: petriyov.io, HTTPS выпускается автоматически (Let's Encrypt).
-# Сертификаты живут в volume caddy_data — не удаляйте его при перезапусках.
+# Production: Caddy работает ЗА Traefik (TLS терминируется там),
+# поэтому слушает голый :80. HSTS и security-заголовки отдаём отсюда —
+# Traefik прозрачно передаёт заголовки бэкенда.
 
-www.petriyov.io {
-	redir https://petriyov.io{uri} permanent
-}
-
-petriyov.io {
+:80 {
 	root * /srv
 	encode zstd gzip
 

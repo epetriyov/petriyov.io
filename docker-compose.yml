@@ -1,29 +1,41 @@
 # Production compose. Живёт на VPS в /opt/petriyov.io/ — деплой сам привозит
 # свежую копию этого файла при каждом запуске, руками его там не править.
 # Образ собирается на GitHub-раннере и приезжает готовым по SSH
-# (docker save → docker load); VPS ничего не собирает — важно: 1 CPU / 1 ГБ RAM.
-# Реестр не используется, имя образа фиксированное: petriyov.io.
-# Для отката создайте рядом .env с тегом нужного коммита:
-#   IMAGE_TAG=sha-<12 символов коммита>     # список: docker images petriyov.io
+# (docker save → docker load); VPS ничего не собирает (1 CPU / 1 ГБ RAM).
+#
+# Порты 80/443 и TLS держит ОБЩИЙ Traefik (стек /home/ai-agent, сеть ai-agent_web):
+# сайт подключается к нему бэкендом через labels; Caddy внутри слушает :80.
+# Соседний роутер petriyov-agent обслуживает Host(petriyov.io) && /tg, /healthz
+# с priority=100 — вебхук Telegram-бота живёт на том же домене, не задевать.
+#
+# Для отката создайте рядом .env: IMAGE_TAG=sha-<коммит> (список: docker images petriyov.io).
 services:
   site:
     image: petriyov.io:${IMAGE_TAG:-latest}
     container_name: petriyov-site
     restart: unless-stopped
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile.prod', '--adapter', 'caddyfile']
-    ports:
-      - '80:80'
-      - '443:443'
-      - '443:443/udp' # HTTP/3
-    volumes:
-      - caddy_data:/data # сертификаты Let's Encrypt — не удалять!
-      - caddy_config:/config
+    networks: [web]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=ai-agent_web
+      # HTTPS-роутер: apex + www (HTTP→HTTPS редиректит сам Traefik на уровне entrypoint)
+      - traefik.http.routers.petriyov-site.rule=Host(`petriyov.io`) || Host(`www.petriyov.io`)
+      - traefik.http.routers.petriyov-site.entrypoints=websecure
+      - traefik.http.routers.petriyov-site.tls.certresolver=letsencrypt
+      - traefik.http.routers.petriyov-site.middlewares=petriyov-www@docker
+      - traefik.http.services.petriyov-site.loadbalancer.server.port=80
+      # www → apex
+      - traefik.http.middlewares.petriyov-www.redirectregex.regex=^https://www\.petriyov\.io/(.*)
+      - traefik.http.middlewares.petriyov-www.redirectregex.replacement=https://petriyov.io/$${1}
+      - traefik.http.middlewares.petriyov-www.redirectregex.permanent=true
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', 'http://localhost/']
       interval: 30s
       timeout: 3s
       retries: 3
 
-volumes:
-  caddy_data:
-  caddy_config:
+networks:
+  web:
+    name: ai-agent_web
+    external: true
