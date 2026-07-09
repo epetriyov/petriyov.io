@@ -92,4 +92,4 @@ lang: ru                          # ru | en
 
 ## Деплой
 
-**Только вручную, по кнопке:** GitHub → Actions → «Deploy (build on VPS)» → Run workflow. Раннер синкает исходники на VPS (rsync по SSH), там собирается Docker-образ (статика + Caddy) и перезапускается контейнер. Push в `main` сам по себе ничего не выкатывает — можно спокойно копить коммиты. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).
+**Только вручную, по кнопке:** GitHub → Actions → «Deploy (build on VPS)» → Run workflow. Раннер передаёт исходники на VPS (tar по SSH), там собирается Docker-образ (статика + Caddy) и перезапускается контейнер. Push в `main` сам по себе ничего не выкатывает — можно спокойно копить коммиты. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).

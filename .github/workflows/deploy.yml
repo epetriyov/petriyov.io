@@ -26,13 +26,18 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Sync sources to VPS
+      - name: Sync sources to VPS (tar over ssh)
+        # не rsync: его нет на минимальных образах Ubuntu, а tar есть везде.
+        # Каталог очищается (кроме .env) и наполняется заново — аналог rsync --delete.
         run: |
-          rsync -az --delete \
-            --exclude '.git' \
-            --exclude '.env' \
-            -e "ssh -i ~/.ssh/deploy_key" \
-            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/petriyov.io/"
+          tar -czf - --exclude='./.git' . \
+            | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
+                set -euo pipefail
+                mkdir -p /opt/petriyov.io
+                cd /opt/petriyov.io
+                find . -mindepth 1 -maxdepth 1 ! -name ".env" -exec rm -rf {} +
+                tar -xzf -
+              '
 
       - name: Build image on VPS and restart
         run: |

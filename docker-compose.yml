@@ -1,5 +1,5 @@
-# Production compose. На VPS репозиторий целиком синкается в /opt/petriyov.io
-# при каждом деплое (rsync из GitHub Actions), там же собирается образ:
+# Production compose. На VPS репозиторий целиком заливается в /opt/petriyov.io
+# при каждом деплое (tar по SSH из GitHub Actions), там же собирается образ:
 #   docker build -t petriyov.io:latest -t petriyov.io:sha-<коммит> .
 # Реестр не используется. По умолчанию запускается petriyov.io:latest.
 # Для отката создайте рядом .env с тегом нужного коммита (rsync его не трогает):
