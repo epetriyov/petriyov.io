@@ -1,4 +1,4 @@
-name: Build & Deploy (Docker over SSH)
+name: Deploy (build on VPS)
 
 on:
   push:
@@ -8,9 +8,6 @@ on:
 concurrency:
   group: deploy
   cancel-in-progress: false
-
-env:
-  IMAGE: petriyov.io
 
 jobs:
   deploy:
@@ -22,9 +19,6 @@ jobs:
         id: meta
         run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
-      - name: Build image
-        run: docker build -t "$IMAGE:${{ steps.meta.outputs.tag }}" -t "$IMAGE:latest" .
-
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -32,22 +26,30 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Ship image to VPS (docker save → ssh → docker load)
+      - name: Sync sources to VPS
         run: |
-          docker save "$IMAGE:${{ steps.meta.outputs.tag }}" "$IMAGE:latest" \
-            | gzip \
-            | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "docker load"
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude '.env' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/petriyov.io/"
 
-      - name: Restart container and prune old images
+      - name: Build image on VPS and restart
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
             set -euo pipefail
             cd /opt/petriyov.io
+            # сборка ДО перезапуска: если она упадёт, старый контейнер продолжит работать
+            docker build --pull \
+              -t petriyov.io:latest \
+              -t petriyov.io:${{ steps.meta.outputs.tag }} \
+              .
             docker compose up -d
             # держим 5 последних sha-образов для отката, остальные удаляем
             docker images petriyov.io --format '{{.Tag}}' \
               | grep '^sha-' | tail -n +6 \
               | xargs -r -I{} docker rmi petriyov.io:{} || true
+            docker image prune -f
           EOF
 
       - name: Smoke check

@@ -1,6 +1,6 @@
 # petriyov.io
 
-Персональный сайт-визитка с блогом. [Astro 5](https://astro.build) + Tailwind CSS 4 + [Keystatic](https://keystatic.com) (локальная админка). Сборка — чистая статика в Docker-образе с Caddy; GitHub Actions собирает образ и заливает его на VPS напрямую по SSH (без реестра).
+Персональный сайт-визитка с блогом. [Astro 5](https://astro.build) + Tailwind CSS 4 + [Keystatic](https://keystatic.com) (локальная админка). Сборка — чистая статика в Docker-образе с Caddy; GitHub Actions синкает исходники на VPS по SSH, образ собирается прямо на сервере (без реестра).
 
 **Документация:**
 
@@ -92,4 +92,4 @@ lang: ru                          # ru | en
 
 ## Деплой
 
-Push в `main` → GitHub Actions собирает Docker-образ (статика + Caddy), передаёт его на VPS по SSH (`docker save | docker load`) и перезапускает контейнер. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).
+Push в `main` → GitHub Actions синкает исходники на VPS (rsync по SSH), там собирается Docker-образ (статика + Caddy) и перезапускается контейнер. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).

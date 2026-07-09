@@ -1,8 +1,6 @@
-# Деплой petriyov.io на VPS (Docker over SSH, с нуля)
+# Деплой petriyov.io на VPS (сборка на сервере, с нуля)
 
-Схема: push в `main` → GitHub Actions собирает Docker-образ (статика + Caddy) → передаёт его на VPS напрямую по SSH (`docker save | ssh | docker load`, без Docker-реестра) → перезапускает контейнер (`docker compose up -d`). HTTPS-сертификаты Caddy выпускает и продлевает сам.
-
-Тяжёлая часть (npm ci, сборка) выполняется на GitHub-раннере; VPS только принимает готовый образ (~50 МБ) и запускает его — подходит даже для самого слабого сервера.
+Схема: push в `main` → GitHub Actions синкает исходники на VPS (rsync по SSH) → **на самом VPS** собирается Docker-образ (статика + Caddy) → `docker compose up -d`. Реестр образов не используется; артефакты не гоняются по сети — только исходники (~несколько МБ). HTTPS-сертификаты Caddy выпускает и продлевает сам.
 
 Предполагается свежий VPS с Ubuntu 22.04/24.04 и доступом root (или sudo-пользователем).
 
@@ -29,6 +27,14 @@ docker --version && docker compose version   # проверка
 
 Файрвол (если ufw): `sudo ufw allow 22,80,443/tcp && sudo ufw allow 443/udp` (443/udp — HTTP/3).
 
+**RAM.** Сборка (npm ci + astro build) хочет ~1 ГБ. Если на VPS меньше 2 ГБ памяти — добавьте swap, иначе сборка может быть убита OOM:
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
 ## 3. Deploy-пользователь
 
 ```bash
@@ -52,7 +58,7 @@ sudo chmod 700 /home/deploy/.ssh && sudo chmod 600 /home/deploy/.ssh/authorized_
 sudo mkdir -p /opt/petriyov.io && sudo chown deploy:deploy /opt/petriyov.io
 ```
 
-От пользователя `deploy` положите туда **один файл** — `docker-compose.yml` из корня репозитория (scp или копипастой). Больше ничего не нужно: образ приезжает по SSH с именем `petriyov.io:latest`, compose использует его по умолчанию. Файл `.env` понадобится только для отката (см. раздел 7).
+Всё. Содержимое (исходники, Dockerfile, docker-compose.yml) приедет само при первом деплое — workflow синкает туда репозиторий целиком. Руками в этом каталоге ничего не правьте: следующий rsync с `--delete` перезапишет любые локальные изменения (не тронет только `.env`).
 
 ## 5. Secrets в GitHub
 
@@ -64,18 +70,16 @@ Settings → Secrets and variables → Actions:
 | `SSH_USER` | `deploy` |
 | `SSH_KEY` | содержимое **приватного** `deploy_key` |
 
-Никаких токенов реестра не требуется — реестр не используется.
-
 ## 6. Первый деплой
 
-Push в `main` (или Actions → «Build & Deploy (Docker over SSH)» → Run workflow). Workflow:
+Push в `main` (или Actions → «Deploy (build on VPS)» → Run workflow). Workflow:
 
-1. соберёт образ и пометит его `petriyov.io:latest` + `petriyov.io:sha-<коммит>`;
-2. перельёт его на VPS: `docker save | gzip | ssh … "docker load"`;
-3. выполнит `docker compose up -d` (compose сам пересоздаёт контейнер, когда image id изменился) и удалит sha-образы старше пяти последних;
-4. проверит `https://petriyov.io/`.
+1. синкает исходники в `/opt/petriyov.io` (rsync, `.env` не трогается);
+2. на VPS собирает образ: `docker build --pull -t petriyov.io:latest -t petriyov.io:sha-<коммит> .` — сборка идёт **до** перезапуска, упавшая сборка не роняет работающий сайт;
+3. `docker compose up -d` (compose пересоздаёт контейнер, увидев новый image id) и удаляет sha-образы старше пяти последних;
+4. проверяет `https://petriyov.io/`.
 
-Первый выпуск сертификата занимает ~10–30 секунд после старта контейнера.
+Первая сборка на VPS занимает несколько минут (npm ci с нуля), дальше — быстрее за счёт кэша слоёв. Первый выпуск сертификата — ~10–30 секунд после старта контейнера.
 
 Проверка на сервере:
 
@@ -98,16 +102,17 @@ echo "IMAGE_TAG=sha-abcdef123456" > .env
 docker compose up -d
 ```
 
-Вернуться на актуальную версию: удалить `.env` (или поставить `IMAGE_TAG=latest`) и снова `docker compose up -d`. Следующий успешный деплой из CI в любом случае перезапустит `latest` — не забудьте убрать `.env` с пином, иначе новые релизы не будут применяться.
+Вернуться на актуальную версию: удалить `.env` (или поставить `IMAGE_TAG=latest`) и снова `docker compose up -d`. Не забудьте убрать пин: пока он стоит, новые деплои собираются, но контейнер продолжает работать на пиненой версии.
 
 ## 8. Эксплуатация
 
 ```bash
 docker logs --tail 100 petriyov-site        # логи
 docker compose -f /opt/petriyov.io/docker-compose.yml restart   # перезапуск
-docker system prune -f                       # почистить мусор (sha-теги отката не тронет)
+docker builder prune -f                      # если кончается место: чистка кэша сборки
 ```
 
 - Volume `caddy_data` хранит сертификаты — **не удаляйте** его (`docker compose down -v` — нельзя), иначе повторный выпуск и риск rate-limit Let's Encrypt.
-- Обновление Caddy/Node приезжает само со следующей пересборкой образа (базовые образы `caddy:2-alpine`, `node:22-alpine`).
-- Бэкапить на сервере нечего: весь контент — в git-репозитории, образы пересобираются из него.
+- Кэш сборки ускоряет деплои, но растёт; `docker builder prune -f` освобождает место (следующая сборка будет дольше).
+- Обновления базовых образов (`node:22-alpine`, `caddy:2-alpine`) подтягиваются каждым деплоем — в сборке стоит `--pull`.
+- Бэкапить на сервере нечего: весь контент — в git-репозитории, образ пересобирается из него.

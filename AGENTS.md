@@ -74,4 +74,4 @@ docs/                     # DEPLOY.md, DOCKER.md, CONTENT.md
 
 ## Деплой (агентам обычно трогать не нужно)
 
-Push в `main` → `.github/workflows/deploy.yml`: docker build в CI (теги `latest` + `sha-*`) → `docker save | gzip | ssh … docker load` (реестра нет) → `docker compose up -d`; на VPS хранятся 5 последних sha-образов для отката. Конфиг на сервере: `/opt/petriyov.io/docker-compose.yml` (+ опциональный `.env` с `IMAGE_TAG` для пина при откате). Подробности: [docs/DEPLOY.md](docs/DEPLOY.md). Меняя Dockerfile/Caddyfile — прогоните локальный чеклист [docs/DOCKER.md](docs/DOCKER.md) и `caddy validate` для prod-конфига.
+Push в `main` → `.github/workflows/deploy.yml`: rsync исходников в `/opt/petriyov.io` на VPS → там `docker build` (теги `latest` + `sha-*`, реестра нет) → `docker compose up -d`; хранятся 5 последних sha-образов для отката. `/opt/petriyov.io` перезаписывается каждым деплоем (`--delete`, выживает только `.env` с опциональным пином `IMAGE_TAG`). Подробности: [docs/DEPLOY.md](docs/DEPLOY.md). Меняя Dockerfile/Caddyfile — прогоните локальный чеклист [docs/DOCKER.md](docs/DOCKER.md) и `caddy validate` для prod-конфига.
