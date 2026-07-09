@@ -1,10 +1,11 @@
 # Production compose — лежит на VPS в /opt/petriyov.io/ (см. docs/DEPLOY.md).
-# Образ собирает GitHub Actions и публикует в GHCR; тег задаётся через .env:
-#   IMAGE=ghcr.io/<github-владелец>/petriyov.io
-#   IMAGE_TAG=latest            # или sha-<коммит> для отката
+# Образ собирает GitHub Actions и заливает на VPS по SSH (docker save → docker load),
+# реестр не используется. По умолчанию запускается petriyov.io:latest.
+# Для отката создайте рядом .env с тегом нужного коммита:
+#   IMAGE_TAG=sha-<12 символов коммита>     # список: docker images petriyov.io
 services:
   site:
-    image: ${IMAGE:?задайте IMAGE в .env}:${IMAGE_TAG:-latest}
+    image: ${IMAGE:-petriyov.io}:${IMAGE_TAG:-latest}
     container_name: petriyov-site
     restart: unless-stopped
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile.prod', '--adapter', 'caddyfile']

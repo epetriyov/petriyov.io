@@ -1,6 +1,8 @@
-# Деплой petriyov.io на VPS (Docker, с нуля)
+# Деплой petriyov.io на VPS (Docker over SSH, с нуля)
 
-Схема: push в `main` → GitHub Actions собирает Docker-образ (статика + Caddy) → публикует в GHCR (`ghcr.io/<владелец>/petriyov.io`) → по SSH выполняет на VPS `docker compose pull && up -d`. HTTPS-сертификаты Caddy выпускает и продлевает сам.
+Схема: push в `main` → GitHub Actions собирает Docker-образ (статика + Caddy) → передаёт его на VPS напрямую по SSH (`docker save | ssh | docker load`, без Docker-реестра) → перезапускает контейнер (`docker compose up -d`). HTTPS-сертификаты Caddy выпускает и продлевает сам.
+
+Тяжёлая часть (npm ci, сборка) выполняется на GitHub-раннере; VPS только принимает готовый образ (~50 МБ) и запускает его — подходит даже для самого слабого сервера.
 
 Предполагается свежий VPS с Ubuntu 22.04/24.04 и доступом root (или sudo-пользователем).
 
@@ -50,23 +52,7 @@ sudo chmod 700 /home/deploy/.ssh && sudo chmod 600 /home/deploy/.ssh/authorized_
 sudo mkdir -p /opt/petriyov.io && sudo chown deploy:deploy /opt/petriyov.io
 ```
 
-От пользователя `deploy` положите туда два файла:
-
-**`/opt/petriyov.io/docker-compose.yml`** — скопируйте из корня репозитория (он написан именно для VPS).
-
-**`/opt/petriyov.io/.env`**:
-
-```env
-IMAGE=ghcr.io/<github-владелец>/petriyov.io
-IMAGE_TAG=latest
-```
-
-`<github-владелец>` — в нижнем регистре (например, `eugenepetriyov`).
-
-### Доступ к GHCR
-
-- **Образ публичный** (рекомендуется для простоты): после первого workflow-запуска откройте пакет на GitHub → Package settings → Change visibility → Public. На VPS ничего настраивать не нужно.
-- **Образ приватный**: создайте PAT (classic) с правом `read:packages` и на VPS выполните `docker login ghcr.io -u <логин> -p <PAT>` от пользователя `deploy` (логин сохранится в `~/.docker/config.json`).
+От пользователя `deploy` положите туда **один файл** — `docker-compose.yml` из корня репозитория (scp или копипастой). Больше ничего не нужно: образ приезжает по SSH с именем `petriyov.io:latest`, compose использует его по умолчанию. Файл `.env` понадобится только для отката (см. раздел 7).
 
 ## 5. Secrets в GitHub
 
@@ -78,11 +64,16 @@ Settings → Secrets and variables → Actions:
 | `SSH_USER` | `deploy` |
 | `SSH_KEY` | содержимое **приватного** `deploy_key` |
 
-`GITHUB_TOKEN` для публикации в GHCR встроенный — отдельный секрет не нужен.
+Никаких токенов реестра не требуется — реестр не используется.
 
 ## 6. Первый деплой
 
-Push в `main` (или Actions → «Build & Deploy (Docker)» → Run workflow). Workflow: соберёт образ → запушит `latest` и `sha-<коммит>` → на VPS сделает `docker compose pull && up -d` → проверит `https://petriyov.io/`.
+Push в `main` (или Actions → «Build & Deploy (Docker over SSH)» → Run workflow). Workflow:
+
+1. соберёт образ и пометит его `petriyov.io:latest` + `petriyov.io:sha-<коммит>`;
+2. перельёт его на VPS: `docker save | gzip | ssh … "docker load"`;
+3. выполнит `docker compose up -d` (compose сам пересоздаёт контейнер, когда image id изменился) и удалит sha-образы старше пяти последних;
+4. проверит `https://petriyov.io/`.
 
 Первый выпуск сертификата занимает ~10–30 секунд после старта контейнера.
 
@@ -96,26 +87,27 @@ curl -I https://petriyov.io/
 
 ## 7. Откат
 
-Каждый деплой публикует тег `sha-<12 символов коммита>` — откат это запуск предыдущего тега:
+На VPS хранятся 5 последних образов с тегами `sha-<коммит>`:
 
 ```bash
 ssh deploy@VPS
 cd /opt/petriyov.io
-# посмотреть, какие теги есть: GitHub → Packages → petriyov.io → теги
-sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=sha-abcdef123456/' .env
-docker compose pull && docker compose up -d
+docker images petriyov.io            # список доступных тегов
+
+echo "IMAGE_TAG=sha-abcdef123456" > .env
+docker compose up -d
 ```
 
-Вернуться на актуальный: `IMAGE_TAG=latest` и снова `pull && up -d`.
+Вернуться на актуальную версию: удалить `.env` (или поставить `IMAGE_TAG=latest`) и снова `docker compose up -d`. Следующий успешный деплой из CI в любом случае перезапустит `latest` — не забудьте убрать `.env` с пином, иначе новые релизы не будут применяться.
 
 ## 8. Эксплуатация
 
 ```bash
 docker logs --tail 100 petriyov-site        # логи
 docker compose -f /opt/petriyov.io/docker-compose.yml restart   # перезапуск
-docker system prune -f                       # почистить старые образы
+docker system prune -f                       # почистить мусор (sha-теги отката не тронет)
 ```
 
 - Volume `caddy_data` хранит сертификаты — **не удаляйте** его (`docker compose down -v` — нельзя), иначе повторный выпуск и риск rate-limit Let's Encrypt.
 - Обновление Caddy/Node приезжает само со следующей пересборкой образа (базовые образы `caddy:2-alpine`, `node:22-alpine`).
-- Бэкапить на сервере нечего: весь контент — в git-репозитории.
+- Бэкапить на сервере нечего: весь контент — в git-репозитории, образы пересобираются из него.

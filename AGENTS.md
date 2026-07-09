@@ -74,4 +74,4 @@ docs/                     # DEPLOY.md, DOCKER.md, CONTENT.md
 
 ## Деплой (агентам обычно трогать не нужно)
 
-Push в `main` → `.github/workflows/deploy.yml`: docker build → GHCR (`latest` + `sha-*`) → ssh на VPS → `docker compose pull && up -d`. Конфиг на сервере: `/opt/petriyov.io/{docker-compose.yml,.env}`. Подробности: [docs/DEPLOY.md](docs/DEPLOY.md). Меняя Dockerfile/Caddyfile — прогоните локальный чеклист [docs/DOCKER.md](docs/DOCKER.md) и `caddy validate` для prod-конфига.
+Push в `main` → `.github/workflows/deploy.yml`: docker build в CI (теги `latest` + `sha-*`) → `docker save | gzip | ssh … docker load` (реестра нет) → `docker compose up -d`; на VPS хранятся 5 последних sha-образов для отката. Конфиг на сервере: `/opt/petriyov.io/docker-compose.yml` (+ опциональный `.env` с `IMAGE_TAG` для пина при откате). Подробности: [docs/DEPLOY.md](docs/DEPLOY.md). Меняя Dockerfile/Caddyfile — прогоните локальный чеклист [docs/DOCKER.md](docs/DOCKER.md) и `caddy validate` для prod-конфига.

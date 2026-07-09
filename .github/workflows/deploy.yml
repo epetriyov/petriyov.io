@@ -1,4 +1,4 @@
-name: Build & Deploy (Docker)
+name: Build & Deploy (Docker over SSH)
 
 on:
   push:
@@ -10,46 +10,21 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io
+  IMAGE: petriyov.io
 
 jobs:
-  build-push:
+  deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      image: ${{ steps.meta.outputs.image }}
-      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compute image name (lowercase)
+      - name: Compute image tag
         id: meta
-        run: |
-          echo "image=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-          echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        run: docker build -t "$IMAGE:${{ steps.meta.outputs.tag }}" -t "$IMAGE:latest" .
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.image }}:latest
-            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
-
-  deploy:
-    needs: build-push
-    runs-on: ubuntu-latest
-    steps:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -57,14 +32,22 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Pull new image and restart
+      - name: Ship image to VPS (docker save → ssh → docker load)
+        run: |
+          docker save "$IMAGE:${{ steps.meta.outputs.tag }}" "$IMAGE:latest" \
+            | gzip \
+            | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "docker load"
+
+      - name: Restart container and prune old images
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
             set -euo pipefail
             cd /opt/petriyov.io
-            docker compose pull
             docker compose up -d
-            docker image prune -f
+            # держим 5 последних sha-образов для отката, остальные удаляем
+            docker images petriyov.io --format '{{.Tag}}' \
+              | grep '^sha-' | tail -n +6 \
+              | xargs -r -I{} docker rmi petriyov.io:{} || true
           EOF
 
       - name: Smoke check
