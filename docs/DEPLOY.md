@@ -1,6 +1,6 @@
 # Деплой petriyov.io на VPS (сборка на сервере, с нуля)
 
-Схема: push в `main` → GitHub Actions синкает исходники на VPS (rsync по SSH) → **на самом VPS** собирается Docker-образ (статика + Caddy) → `docker compose up -d`. Реестр образов не используется; артефакты не гоняются по сети — только исходники (~несколько МБ). HTTPS-сертификаты Caddy выпускает и продлевает сам.
+Схема: кнопка **Run workflow** в GitHub Actions → раннер синкает исходники на VPS (rsync по SSH) → **на самом VPS** собирается Docker-образ (статика + Caddy) → `docker compose up -d`. Деплой запускается **только вручную** — push в `main` сам по себе ничего не выкатывает. Реестр образов не используется; артефакты не гоняются по сети — только исходники (~несколько МБ). HTTPS-сертификаты Caddy выпускает и продлевает сам.
 
 Предполагается свежий VPS с Ubuntu 22.04/24.04 и доступом root (или sudo-пользователем).
 
@@ -70,9 +70,9 @@ Settings → Secrets and variables → Actions:
 | `SSH_USER` | `deploy` |
 | `SSH_KEY` | содержимое **приватного** `deploy_key` |
 
-## 6. Первый деплой
+## 6. Деплой
 
-Push в `main` (или Actions → «Deploy (build on VPS)» → Run workflow). Workflow:
+GitHub → вкладка **Actions** → workflow «Deploy (build on VPS)» → **Run workflow** (ветка `main`). Так выкатывается и первый, и каждый последующий релиз: пуши накапливаются в `main`, на прод уходит текущее состояние ветки в момент нажатия кнопки. Workflow:
 
 1. синкает исходники в `/opt/petriyov.io` (rsync, `.env` не трогается);
 2. на VPS собирает образ: `docker build --pull -t petriyov.io:latest -t petriyov.io:sha-<коммит> .` — сборка идёт **до** перезапуска, упавшая сборка не роняет работающий сайт;

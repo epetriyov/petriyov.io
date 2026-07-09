@@ -1,8 +1,8 @@
 name: Deploy (build on VPS)
 
+# Деплой ТОЛЬКО вручную: GitHub → Actions → «Deploy (build on VPS)» → Run workflow.
+# Push в main ничего не деплоит.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
