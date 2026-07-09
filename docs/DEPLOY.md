@@ -4,7 +4,7 @@
 
 Схема рассчитана на слабый VPS (проверено на 1 CPU / 1 ГБ RAM / 10 ГБ диска): сервер ничего не собирает — только принимает образ и запускает контейнер. Кэша сборки и исходников на сервере нет; 5 образов для отката делят базовые слои и занимают суммарно ~100 МБ.
 
-Предполагается свежий VPS с Ubuntu 22.04/24.04 и доступом root (или sudo-пользователем).
+Предполагается свежий VPS с Ubuntu 22.04/24.04 или Debian 11/12 и доступом root (или sudo-пользователем).
 
 ## 1. DNS
 
@@ -60,13 +60,7 @@ sudo chmod 700 /home/deploy/.ssh && sudo chmod 600 /home/deploy/.ssh/authorized_
 sudo mkdir -p /opt/petriyov.io && sudo chown deploy:deploy /opt/petriyov.io
 ```
 
-Положите туда **один файл** — `docker-compose.yml` из корня репозитория (с вашей машины):
-
-```bash
-scp docker-compose.yml deploy@ВАШ_VPS:/opt/petriyov.io/
-```
-
-Больше ничего не нужно: образ приезжает по SSH с именем `petriyov.io:latest`, compose использует его по умолчанию. Файл `.env` понадобится только для отката (раздел 7). Исходники на сервере не хранятся.
+Всё. Свежий `docker-compose.yml` привозится самим деплоем при каждом запуске (не редактируйте его на сервере — перезапишется). Образ приезжает по SSH с фиксированным именем `petriyov.io`. Файл `.env` понадобится только для отката (раздел 7) и должен содержать **только** `IMAGE_TAG` — ничего больше. Исходники на сервере не хранятся.
 
 ## 5. Secrets в GitHub
 
@@ -83,7 +77,7 @@ Settings → Secrets and variables → Actions:
 GitHub → вкладка **Actions** → workflow «Deploy (build in CI)» → **Run workflow** (ветка `main`). Так выкатывается и первый, и каждый последующий релиз: пуши накапливаются в `main`, на прод уходит текущее состояние ветки в момент нажатия кнопки. Workflow:
 
 1. собирает образ на раннере: `docker build --pull -t petriyov.io:latest -t petriyov.io:sha-<коммит> .`;
-2. переливает его на VPS: `docker save | gzip | ssh … "docker load"` (~50 МБ);
+2. переливает его на VPS: `docker save | gzip | ssh … "docker load"` (~50 МБ) + копирует свежий `docker-compose.yml`;
 3. `docker compose up -d` (compose пересоздаёт контейнер, увидев новый image id) и удаляет sha-образы старше пяти последних;
 4. проверяет `https://petriyov.io/`.
 

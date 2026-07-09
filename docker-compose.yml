@@ -1,12 +1,13 @@
-# Production compose — единственный файл, который нужен на VPS (/opt/petriyov.io/).
+# Production compose. Живёт на VPS в /opt/petriyov.io/ — деплой сам привозит
+# свежую копию этого файла при каждом запуске, руками его там не править.
 # Образ собирается на GitHub-раннере и приезжает готовым по SSH
 # (docker save → docker load); VPS ничего не собирает — важно: 1 CPU / 1 ГБ RAM.
-# Реестр не используется. По умолчанию запускается petriyov.io:latest.
+# Реестр не используется, имя образа фиксированное: petriyov.io.
 # Для отката создайте рядом .env с тегом нужного коммита:
 #   IMAGE_TAG=sha-<12 символов коммита>     # список: docker images petriyov.io
 services:
   site:
-    image: ${IMAGE:-petriyov.io}:${IMAGE_TAG:-latest}
+    image: petriyov.io:${IMAGE_TAG:-latest}
     container_name: petriyov-site
     restart: unless-stopped
     command: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile.prod', '--adapter', 'caddyfile']

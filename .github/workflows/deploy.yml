@@ -42,6 +42,11 @@ jobs:
             | gzip \
             | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "docker load"
 
+      - name: Ship fresh docker-compose.yml
+        run: |
+          scp -i ~/.ssh/deploy_key docker-compose.yml \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/petriyov.io/docker-compose.yml"
+
       - name: Restart container and prune old images
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
