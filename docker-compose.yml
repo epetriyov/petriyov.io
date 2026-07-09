@@ -1,8 +1,8 @@
-# Production compose. На VPS репозиторий целиком заливается в /opt/petriyov.io
-# при каждом деплое (tar по SSH из GitHub Actions), там же собирается образ:
-#   docker build -t petriyov.io:latest -t petriyov.io:sha-<коммит> .
+# Production compose — единственный файл, который нужен на VPS (/opt/petriyov.io/).
+# Образ собирается на GitHub-раннере и приезжает готовым по SSH
+# (docker save → docker load); VPS ничего не собирает — важно: 1 CPU / 1 ГБ RAM.
 # Реестр не используется. По умолчанию запускается petriyov.io:latest.
-# Для отката создайте рядом .env с тегом нужного коммита (rsync его не трогает):
+# Для отката создайте рядом .env с тегом нужного коммита:
 #   IMAGE_TAG=sha-<12 символов коммита>     # список: docker images petriyov.io
 services:
   site:

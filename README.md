@@ -1,6 +1,6 @@
 # petriyov.io
 
-Персональный сайт-визитка с блогом. [Astro 5](https://astro.build) + Tailwind CSS 4 + [Keystatic](https://keystatic.com) (локальная админка). Сборка — чистая статика в Docker-образе с Caddy; GitHub Actions синкает исходники на VPS по SSH, образ собирается прямо на сервере (без реестра).
+Персональный сайт-визитка с блогом. [Astro 5](https://astro.build) + Tailwind CSS 4 + [Keystatic](https://keystatic.com) (локальная админка). Сборка — чистая статика в Docker-образе с Caddy; образ собирается в GitHub Actions и приезжает на VPS готовым по SSH (без реестра, сервер ничего не собирает).
 
 **Документация:**
 
@@ -92,4 +92,4 @@ lang: ru                          # ru | en
 
 ## Деплой
 
-**Только вручную, по кнопке:** GitHub → Actions → «Deploy (build on VPS)» → Run workflow. Раннер передаёт исходники на VPS (tar по SSH), там собирается Docker-образ (статика + Caddy) и перезапускается контейнер. Push в `main` сам по себе ничего не выкатывает — можно спокойно копить коммиты. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).
+**Только вручную, по кнопке:** GitHub → Actions → «Deploy (build in CI)» → Run workflow. Образ собирается на раннере и передаётся на VPS готовым (`docker save | ssh | docker load`), сервер только перезапускает контейнер — сборки на VPS нет (железо: 1 CPU / 1 ГБ RAM). Push в `main` сам по себе ничего не выкатывает — можно спокойно копить коммиты. Первичная настройка сервера (Docker, DNS, secrets) — в [docs/DEPLOY.md](docs/DEPLOY.md); локальная проверка образа — [docs/DOCKER.md](docs/DOCKER.md).

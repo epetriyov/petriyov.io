@@ -1,13 +1,20 @@
-name: Deploy (build on VPS)
+name: Deploy (build in CI)
 
-# Деплой ТОЛЬКО вручную: GitHub → Actions → «Deploy (build on VPS)» → Run workflow.
+# Деплой ТОЛЬКО вручную: GitHub → Actions → «Deploy (build in CI)» → Run workflow.
 # Push в main ничего не деплоит.
+#
+# Сборка целиком идёт на GitHub-раннере: VPS слабый (1 CPU / 1 ГБ RAM / 10 ГБ диск),
+# сборка на нём приводит к OOM. Сервер только принимает готовый образ по SSH
+# (docker save → docker load, ~50 МБ сжатых) и перезапускает контейнер.
 on:
   workflow_dispatch:
 
 concurrency:
   group: deploy
   cancel-in-progress: false
+
+env:
+  IMAGE: petriyov.io
 
 jobs:
   deploy:
@@ -19,6 +26,9 @@ jobs:
         id: meta
         run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
+      - name: Build image (on runner)
+        run: docker build --pull -t "$IMAGE:${{ steps.meta.outputs.tag }}" -t "$IMAGE:latest" .
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -26,29 +36,17 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Sync sources to VPS (tar over ssh)
-        # не rsync: его нет на минимальных образах Ubuntu, а tar есть везде.
-        # Каталог очищается (кроме .env) и наполняется заново — аналог rsync --delete.
+      - name: Ship image to VPS (docker save → ssh → docker load)
         run: |
-          tar -czf - --exclude='./.git' . \
-            | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" '
-                set -euo pipefail
-                mkdir -p /opt/petriyov.io
-                cd /opt/petriyov.io
-                find . -mindepth 1 -maxdepth 1 ! -name ".env" -exec rm -rf {} +
-                tar -xzf -
-              '
+          docker save "$IMAGE:${{ steps.meta.outputs.tag }}" "$IMAGE:latest" \
+            | gzip \
+            | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "docker load"
 
-      - name: Build image on VPS and restart
+      - name: Restart container and prune old images
         run: |
           ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
             set -euo pipefail
             cd /opt/petriyov.io
-            # сборка ДО перезапуска: если она упадёт, старый контейнер продолжит работать
-            docker build --pull \
-              -t petriyov.io:latest \
-              -t petriyov.io:${{ steps.meta.outputs.tag }} \
-              .
             docker compose up -d
             # держим 5 последних sha-образов для отката, остальные удаляем
             docker images petriyov.io --format '{{.Tag}}' \
