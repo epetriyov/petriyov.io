@@ -49,6 +49,23 @@ export default config({
     }),
   },
   singletons: {
+    settings: singleton({
+      label: 'Настройки сайта',
+      path: 'src/config/settings',
+      format: { data: 'json' },
+      schema: {
+        email: fields.text({ label: 'Email', validation: { isRequired: true } }),
+        github: fields.url({ label: 'GitHub', validation: { isRequired: true } }),
+        linkedin: fields.url({ label: 'LinkedIn', validation: { isRequired: true } }),
+        telegram: fields.url({ label: 'Telegram', validation: { isRequired: true } }),
+        bio: fields.text({
+          label: 'Био на главной',
+          description: '2–3 предложения; ссылка «Подробнее — обо мне» добавится автоматически',
+          multiline: true,
+          validation: { isRequired: true },
+        }),
+      },
+    }),
     about: singleton({
       label: 'Страница «Обо мне»',
       path: 'src/content/pages/about',
@@ -64,6 +81,25 @@ export default config({
             { label: 'English', value: 'en' },
           ],
           defaultValue: 'ru',
+        }),
+        content: fields.markdoc({ label: 'Текст', extension: 'md' }),
+      },
+    }),
+    aboutEn: singleton({
+      label: 'Страница «About» (EN)',
+      path: 'src/content/pages/en/about',
+      format: { contentField: 'content' },
+      entryLayout: 'content',
+      schema: {
+        title: fields.text({ label: 'Title', validation: { isRequired: true } }),
+        description: fields.text({ label: 'Meta description', multiline: true }),
+        lang: fields.select({
+          label: 'Язык',
+          options: [
+            { label: 'Русский', value: 'ru' },
+            { label: 'English', value: 'en' },
+          ],
+          defaultValue: 'en',
         }),
         content: fields.markdoc({ label: 'Текст', extension: 'md' }),
       },

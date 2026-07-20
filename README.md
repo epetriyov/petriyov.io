@@ -62,7 +62,8 @@ lang: ru                          # ru | en
 
 ## Как поменять контакты, меню, имя
 
-Всё в одном файле: [src/config/site.ts](src/config/site.ts) — имя, роль, email, ссылки GitHub/LinkedIn/Telegram (сейчас там **заглушки — замените!**), массив пунктов меню `nav` (порядок = порядок в шапке), число статей на страницу.
+- **Email, ссылки GitHub/LinkedIn/Telegram, био на главной** — через админку: `/keystatic` → «Настройки сайта» (файлом: [src/config/settings.json](src/config/settings.json); сейчас там **заглушки-ссылки — замените!**).
+- **Меню, имя, роль** — [src/config/site.ts](src/config/site.ts): массив `nav` (порядок = порядок в шапке), число статей на страницу.
 
 ## Как обновить резюме
 
@@ -78,8 +79,8 @@ lang: ru                          # ru | en
 
 - [ ] `src/assets/avatar.jpg` — сейчас нейтральная заглушка; положите своё фото (квадратное, от 512×512).
 - [ ] `public/petriyov-cv.pdf` — заглушка; положите реальное резюме.
-- [ ] Ссылки GitHub/LinkedIn/Telegram в `src/config/site.ts`.
-- [ ] Тексты `src/content/pages/about.md`, `en/about.md`, `now.md` и `resume.yaml` — сейчас демо-контент.
+- [ ] Ссылки GitHub/LinkedIn/Telegram — админка «Настройки сайта» (или `src/config/settings.json`).
+- [ ] Тексты `src/content/pages/about.md`, `en/about.md`, `now.md` и `resume.yaml` — сейчас демо-контент (всё правится в админке).
 - [ ] Демо-статьи в `src/content/blog/` — удалите или замените.
 
 ## Структура

@@ -22,12 +22,14 @@ npm run dev
 
 | Раздел | Файл(ы) | Что это |
 | --- | --- | --- |
+| Настройки сайта | `src/config/settings.json` | email, ссылки GitHub/LinkedIn/Telegram, био на главной |
 | Статьи блога | `src/content/blog/*.md` | посты |
 | Страница «Обо мне» | `src/content/pages/about.md` | /about |
+| Страница «About» (EN) | `src/content/pages/en/about.md` | /en/about |
 | Страница «Now» | `src/content/pages/now.md` | /now + тизер на главной |
 | Резюме | `src/content/resume.yaml` | /resume |
 
-(Английская версия «Обо мне» — `src/content/pages/en/about.md` — правится руками, она меняется редко.)
+Вне админки остаются только: фото (`src/assets/avatar.jpg`) и PDF-резюме (`public/petriyov-cv.pdf`) — заменяются файлами с теми же именами; пункты меню и имя — в `src/config/site.ts`.
 
 ## Статьи
 
@@ -105,9 +107,13 @@ git push
 
 PDF-версия — отдельный файл `public/petriyov-cv.pdf`: замените его вручную, из данных сайта он не генерируется.
 
-## Контакты, меню, имя, соцссылки
+## Контакты, соцссылки, био главной
 
-Это не контент, а конфиг: [src/config/site.ts](../src/config/site.ts). Меняются в одном месте, подхватываются шапкой, футером, страницей контактов, SEO-разметкой и JSON-LD.
+Админка → **«Настройки сайта»**: email, GitHub/LinkedIn/Telegram и био. Подхватываются везде: шапка, футер, страница контактов, SEO-разметка и JSON-LD. (Файлом это `src/config/settings.json`.)
+
+## Меню и имя
+
+Структурный конфиг — в [src/config/site.ts](../src/config/site.ts): массив `nav` (порядок = порядок в шапке), имя/роль для JSON-LD.
 
 ## Проверка перед публикацией
 

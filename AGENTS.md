@@ -28,7 +28,8 @@ npm run docker:local # локальная проверка prod-сборки →
 astro.config.mjs          # sitemap, dev-only keystatic, tailwind, remark reading-time, shiki
 keystatic.config.ts       # схемы админки — зеркало content.config.ts (см. «Гочи» №1)
 src/
-  config/site.ts          # ЕДИНЫЙ конфиг: имя, контакты, меню nav[], postsPerPage
+  config/site.ts          # ЕДИНЫЙ конфиг: имя, меню nav[], postsPerPage; импортирует ↓
+  config/settings.json    # контакты + био главной — редактируется Keystatic-синглтоном «settings»
   content.config.ts       # zod-схемы коллекций blog / pages / resume
   content/                # контент (Markdown/YAML) — обычно правит владелец, не агенты
   styles/global.css       # дизайн-токены @theme + .prose + .section-label
@@ -49,7 +50,7 @@ docs/                     # DEPLOY.md, DOCKER.md, CONTENT.md
 
 **Новая страница.** Роут `src/pages/имя.astro` на базе `Base.astro` (обязательны `title` ≤ 60 симв. и `description` ≤ 155); если у страницы редактируемый текст — markdown в `src/content/pages/` + рендер через `getEntry`/`render` (образец: [src/pages/now.astro](src/pages/now.astro)); пункт меню — массив `nav` в `site.ts`.
 
-**Новое поле контента.** Менять **обе** схемы синхронно: zod в `content.config.ts` **и** поля в `keystatic.config.ts`. Затем прогнать `npm run dev` и открыть соответствующий раздел в `/keystatic` — Keystatic валидирует существующие файлы строго и упадёт на лишнем/недостающем ключе frontmatter.
+**Новое поле контента.** Менять **обе** схемы синхронно: zod в `content.config.ts` **и** поля в `keystatic.config.ts`. Для `settings.json` пары «zod-схема» нет — там синхронизируются `keystatic.config.ts` (синглтон `settings`) и потребители в `site.ts`. Затем прогнать `npm run dev` и открыть соответствующий раздел в `/keystatic` — Keystatic валидирует существующие файлы строго и упадёт на лишнем/недостающем ключе frontmatter.
 
 **Компонент с интерактивностью.** Сайт обходится нулём клиентского JS — сохраняйте это. Если интерактив неизбежен, сначала `<script>` в Astro-компоненте (vanilla), react-остров — крайняя мера (react подключён только в dev для Keystatic!).
 
