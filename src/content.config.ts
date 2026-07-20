@@ -59,10 +59,11 @@ const resume = defineCollection({
       z.object({
         place: z.string(),
         degree: z.string(),
-        start: z.string(),
+        start: z.string().optional(),
         end: z.string().optional(),
       })
     ),
+    extras: z.array(z.string()).default([]),
   }),
 });
 

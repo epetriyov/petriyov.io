@@ -170,11 +170,16 @@ export default config({
           fields.object({
             place: fields.text({ label: 'Учебное заведение', validation: { isRequired: true } }),
             degree: fields.text({ label: 'Степень/специальность', validation: { isRequired: true } }),
-            start: fields.text({ label: 'Начало', validation: { isRequired: true } }),
+            start: fields.text({ label: 'Начало' }),
             end: fields.text({ label: 'Конец' }),
           }),
           { label: 'Образование', itemLabel: (props) => props.fields.place.value }
         ),
+        extras: fields.array(fields.text({ label: 'Пункт' }), {
+          label: 'Дополнительно',
+          description: 'Конференции, пет-проекты и т.п.',
+          itemLabel: (props) => props.value,
+        }),
       },
     }),
   },

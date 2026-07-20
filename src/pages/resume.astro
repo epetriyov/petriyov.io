@@ -4,12 +4,12 @@ import Base from '../layouts/Base.astro';
 
 const resume = await getEntry('resume', 'main');
 if (!resume) throw new Error('Не найден src/content/resume.yaml');
-const { role, summary, experience, skills, education } = resume.data;
+const { role, summary, experience, skills, education, extras } = resume.data;
 ---
 
 <Base
   title="Резюме — Евгений Петриёв, Engineering Manager"
-  description="Резюме Евгения Петриёва (Petriyov): опыт руководства разработкой IoT-платформ, навыки, образование. PDF-версия доступна для скачивания."
+  description="Резюме Евгения Петриёва (Petriyov): 15+ лет в разработке, 10+ лет управления командами — Делимобиль, OZON, WayRay. PDF доступен для скачивания."
 >
   <div class="flex items-start justify-between gap-5 max-[540px]:flex-col">
     <div>
@@ -85,12 +85,34 @@ const { role, summary, experience, skills, education } = resume.data;
             <div class="text-[15.5px] font-semibold">{edu.place}</div>
             <div class="mt-0.5 text-[14px] text-muted">{edu.degree}</div>
           </div>
-          <span class="whitespace-nowrap text-[13px] tabular-nums text-faint">
-            {edu.start}
-            {edu.end && `—${edu.end}`}
-          </span>
+          {
+            edu.start && (
+              <span class="whitespace-nowrap text-[13px] tabular-nums text-faint">
+                {edu.start}
+                {edu.end && `—${edu.end}`}
+              </span>
+            )
+          }
         </li>
       ))
     }
   </ul>
+
+  {
+    extras.length > 0 && (
+      <>
+        <h2 class="section-label mb-4 mt-11">Дополнительно</h2>
+        <ul class="space-y-1.5 text-[14.5px] leading-[1.6] text-ink-soft">
+          {extras.map((item) => (
+            <li class="flex gap-2">
+              <span class="text-faint" aria-hidden="true">
+                —
+              </span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
 </Base>
