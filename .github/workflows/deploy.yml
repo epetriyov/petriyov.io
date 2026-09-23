@@ -19,6 +19,12 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # инцидент 2026-07-20: ssh завис на `compose up` на 2ч+, контейнер остался
+    # в состоянии Created (не Up), сайт лежал до ручного старта. Отсюда — общий
+    # таймаут и keepalive в SSH_OPTS: мёртвое соединение рвётся за ~1 минуту.
+    timeout-minutes: 15
+    env:
+      SSH_OPTS: -i ~/.ssh/deploy_key -o ServerAliveInterval=15 -o ServerAliveCountMax=4
     steps:
       - uses: actions/checkout@v4
 
@@ -40,19 +46,21 @@ jobs:
         run: |
           docker save "$IMAGE:${{ steps.meta.outputs.tag }}" "$IMAGE:latest" \
             | gzip \
-            | ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "docker load"
+            | ssh $SSH_OPTS "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "docker load"
 
       - name: Ship fresh docker-compose.yml
         run: |
-          scp -i ~/.ssh/deploy_key docker-compose.yml \
+          scp $SSH_OPTS docker-compose.yml \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/petriyov.io/docker-compose.yml"
 
       - name: Restart container and prune old images
         run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
+          ssh $SSH_OPTS "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
             set -euo pipefail
             cd /opt/petriyov.io
-            docker compose up -d
+            # --wait: не выходить, пока контейнер не станет healthy —
+            # «создан, но не запущен» теперь валит шаг, а не молчит
+            docker compose up -d --wait
             # держим 5 последних sha-образов для отката, остальные удаляем
             docker images petriyov.io --format '{{.Tag}}' \
               | grep '^sha-' | tail -n +6 \
